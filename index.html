@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Etho Trading Journal</title>
+  <!-- Browser Favicon using Etho AI Logo -->
+  <link rel="icon" type="image/webp" href="https://raw.githubusercontent.com/aryansharma1171/webimages/main/Etho%20ai%20logo.webp" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            darkbg: '#090d16',
+            cardbg: '#111827',
+            bordercol: '#1f2937',
+            accent: '#3b82f6',
+            success: '#10b981',
+            danger: '#ef4444'
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #090d16; color: #f3f4f6; overflow-x: hidden; margin: 0; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #090d16; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+    .card-glass { background: rgba(17, 24, 39, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.06); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-fade-in { animation: fadeIn 0.25s ease-out forwards; }
+    
+    /* Calendar P&L Status Classes */
+    .profit-day { background-color: rgba(16, 185, 129, 0.12) !important; border-color: rgba(16, 185, 129, 0.3) !important; }
+    .loss-day { background-color: rgba(239, 68, 68, 0.12) !important; border-color: rgba(239, 68, 68, 0.3) !important; }
+    .break-even-day { background-color: rgba(255, 255, 255, 0.05) !important; border-color: rgba(255, 255, 255, 0.1) !important; }
+    
+    .safe-bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+    .app-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 8px; flex-shrink: 0; }
+  </style>
+</head>
+<body class="bg-darkbg text-gray-100 min-h-screen flex flex-col md:flex-row overflow-x-hidden">
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-[90vw] sm:max-w-md"></div>
+
+  <!-- First-Time Setup Modal -->
+  <div id="setup-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="card-glass max-w-md w-full rounded-2xl border border-bordercol p-6 sm:p-8 space-y-6 animate-fade-in">
+      <div class="text-center space-y-3">
+        <img src="https://raw.githubusercontent.com/aryansharma1171/webimages/main/Etho%20ai%20logo.webp" alt="Etho AI Logo" class="w-14 h-14 object-contain mx-auto rounded-xl shadow-lg shadow-blue-500/20" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'56\' height=\'56\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%233b82f6\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polygon points=\'12 2 2 7 12 12 22 7 12 2\'/><polyline points=\'2 17 12 22 22 17\'/><polyline points=\'2 12 12 17 22 12\'/></svg>';" />
+        <h2 class="text-xl font-bold">Welcome to Etho Trading Journal</h2>
+        <p class="text-xs text-gray-400">"Let's set up your trading journal."</p>
+      </div>
+      <form onsubmit="handleInitialSetup(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1">Full Name *</label>
+          <input type="text" id="setup-fullname" required placeholder="e.g. Aryan Sharma" class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200 focus:outline-none focus:border-blue-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1">Trading Name / Nickname (Optional)</label>
+          <input type="text" id="setup-nickname" placeholder="e.g. AlphaTrader" class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200 focus:outline-none focus:border-blue-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-400 mb-1">Starting Balance</label>
+          <input type="number" step="any" id="setup-startbal" value="0" class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200 focus:outline-none focus:border-blue-500" />
+        </div>
+        <button type="submit" class="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-600/30">Continue</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Day Detail Modal -->
+  <div id="day-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="card-glass max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-bordercol p-6 space-y-6">
+      <div class="flex items-center justify-between border-b border-bordercol pb-4">
+        <div>
+          <h3 id="day-modal-title" class="font-bold text-lg">Date</h3>
+          <p id="day-modal-subtitle" class="text-xs text-gray-400">Daily Performance Breakdown</p>
+        </div>
+        <button onclick="closeDayModal()" class="p-2 rounded-xl hover:bg-white/5"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div id="day-modal-metrics" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+      <div class="space-y-3">
+        <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Trades on this day</h4>
+        <div id="day-modal-trades" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Goal Details Modal -->
+  <div id="goal-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="card-glass max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-bordercol p-6 space-y-6 animate-fade-in">
+      <div class="flex items-center justify-between border-b border-bordercol pb-4">
+        <div>
+          <h3 id="goal-modal-name" class="font-bold text-lg">Goal Details</h3>
+          <p id="goal-modal-type" class="text-xs text-blue-400">Trading Discipline</p>
+        </div>
+        <button onclick="closeGoalModal()" class="p-2 rounded-xl hover:bg-white/5"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div id="goal-modal-content" class="space-y-4 text-xs sm:text-sm"></div>
+      <div class="flex gap-2 pt-2 border-t border-bordercol">
+        <button onclick="deleteGoalFromModal()" class="w-full h-11 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold text-xs">Delete Goal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic In-App Confirmation Modal -->
+  <div id="generic-confirm-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="card-glass max-w-sm w-full rounded-2xl border border-bordercol p-6 space-y-4 animate-fade-in">
+      <h3 id="generic-confirm-title" class="font-bold text-base text-white">Confirmation</h3>
+      <p id="generic-confirm-desc" class="text-xs text-gray-300">Are you sure you want to perform this action?</p>
+      <div id="generic-confirm-details" class="p-3 bg-darkbg rounded-xl border border-bordercol text-xs space-y-1 hidden"></div>
+      <div class="flex gap-3 pt-2">
+        <button onclick="closeGenericConfirm()" class="flex-1 h-11 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold">Cancel</button>
+        <button id="generic-confirm-btn" onclick="executeGenericConfirm()" class="flex-1 h-11 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create / Edit Goal Modal -->
+  <div id="goal-form-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="card-glass max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-bordercol p-6 space-y-4 animate-fade-in">
+      <div class="flex items-center justify-between border-b border-bordercol pb-3">
+        <h3 id="goal-form-title" class="font-bold text-base">Create New Goal</h3>
+        <button onclick="closeGoalFormModal()" class="p-1 rounded-xl hover:bg-white/5"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <form onsubmit="handleGoalFormSubmit(event)" class="space-y-4 text-xs">
+        <input type="hidden" id="edit-goal-id" />
+        <div>
+          <label class="block text-gray-400 mb-1">Goal Name *</label>
+          <input type="text" id="form-goal-name" required placeholder="e.g. Maximum 3 Trades Per Day" class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200" />
+        </div>
+        <div>
+          <label class="block text-gray-400 mb-1">Goal Type *</label>
+          <select id="form-goal-type" class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200">
+            <optgroup label="Trading Discipline">
+              <option value="max_trades_day">Maximum trades per day</option>
+              <option value="max_daily_loss">Maximum daily loss</option>
+              <option value="follow_plan">Follow trading plan / rules</option>
+            </optgroup>
+            <optgroup label="Performance Tracking">
+              <option value="target_win_rate">Target win rate %</option>
+              <option value="target_profit_factor">Target profit factor</option>
+              <option value="target_profitable_days">Target profitable days count</option>
+            </optgroup>
+            <optgroup label="Learning & Habits">
+              <option value="journal_every_day">Complete trading journal</option>
+              <option value="record_mistakes">Record mistakes & lessons</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 mb-1">Target Value *</label>
+            <input type="number" step="any" id="form-goal-target" required placeholder="3" class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200" />
+          </div>
+          <div>
+            <label class="block text-gray-400 mb-1">Starting Value</label>
+            <input type="number" step="any" id="form-goal-startval" value="0" class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 mb-1">Start Date *</label>
+            <input type="date" id="form-goal-startdate" required class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200" />
+          </div>
+          <div>
+            <label class="block text-gray-400 mb-1">End Date *</label>
+            <input type="date" id="form-goal-enddate" required class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-gray-400 mb-1">Description / Notes</label>
+          <textarea id="form-goal-desc" rows="2" placeholder="Why is this goal important?" class="w-full bg-darkbg border border-bordercol rounded-xl p-3 text-sm text-gray-200"></textarea>
+        </div>
+        <button type="submit" class="w-full h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-600/30">Save Goal</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Fixed Desktop Sidebar with Etho AI Logo as App Branding -->
+  <aside class="hidden md:flex flex-col w-64 bg-cardbg border-r border-bordercol p-5 fixed top-0 left-0 h-screen z-40">
+    <div class="flex items-center gap-3 mb-6 pb-4 border-b border-bordercol">
+      <img src="https://raw.githubusercontent.com/aryansharma1171/webimages/main/Etho%20ai%20logo.webp" alt="Etho AI Logo" class="app-logo flex-shrink-0" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'32\' height=\'32\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%233b82f6\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polygon points=\'12 2 2 7 12 12 22 7 12 2\'/><polyline points=\'2 17 12 22 22 17\'/><polyline points=\'2 12 12 17 22 12\'/></svg>';" />
+      <div class="min-w-0">
+        <h1 class="font-bold text-sm tracking-tight truncate">Etho Trading Journal</h1>
+        <p class="text-[10px] text-blue-400 font-medium">Professional Edition</p>
+      </div>
+    </div>
+
+    <!-- Desktop Sidebar User Profile Area -->
+    <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-bordercol mb-4">
+      <div id="sidebar-user-avatar" class="user-avatar-target w-9 h-9 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs overflow-hidden flex-shrink-0 border border-bordercol">
+        A
+      </div>
+      <div class="min-w-0 flex-1">
+        <p id="sidebar-username" class="font-bold text-xs text-gray-200 truncate">Trader</p>
+        <p class="text-[10px] text-gray-400 truncate">Active Account</p>
+      </div>
+    </div>
+
+    <nav class="flex flex-col gap-1.5 flex-1 overflow-y-auto">
+      <button onclick="switchTab('dashboard')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all bg-white/10 text-white" data-target="dashboard">
+        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+      </button>
+      <button onclick="switchTab('trades')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all text-gray-400 hover:text-white hover:bg-white/5" data-target="trades">
+        <i data-lucide="list-ordered" class="w-4 h-4"></i> Trade History
+      </button>
+      <button onclick="switchTab('add-trade')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all text-gray-400 hover:text-white hover:bg-white/5" data-target="add-trade">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i> Add Trade
+      </button>
+      <button onclick="switchTab('analytics')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all text-gray-400 hover:text-white hover:bg-white/5" data-target="analytics">
+        <i data-lucide="pie-chart" class="w-4 h-4"></i> Analytics
+      </button>
+      <button onclick="switchTab('calendar')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all text-gray-400 hover:text-white hover:bg-white/5" data-target="calendar">
+        <i data-lucide="calendar" class="w-4 h-4"></i> Calendar
+      </button>
+      <button onclick="switchTab('goals')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all text-gray-400 hover:text-white hover:bg-white/5" data-target="goals">
+        <i data-lucide="target" class="w-4 h-4"></i> Goals
+      </button>
+      <button onclick="switchTab('psychology')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all text-gray-400 hover:text-white hover:bg-white/5" data-target="psychology">
+        <i data-lucide="brain" class="w-4 h-4"></i> Psychology
+      </button>
+      <button onclick="switchTab('settings')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all text-gray-400 hover:text-white hover:bg-white/5" data-target="settings">
+        <i data-lucide="settings" class="w-4 h-4"></i> Settings
+      </button>
+      <button onclick="switchTab('manual')" class="nav-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all text-gray-400 hover:text-white hover:bg-white/5" data-target="manual">
+        <i data-lucide="book-open" class="w-4 h-4"></i> User Manual
+      </button>
+    </nav>
+
+    <div class="pt-3 border-t border-bordercol mt-auto">
+      <div class="p-2.5 bg-white/5 rounded-xl flex items-center justify-between">
+        <div>
+          <p class="text-[10px] text-gray-400">Account Balance</p>
+          <p id="sidebar-balance" class="font-bold text-xs text-emerald-400">₹0.00</p>
+        </div>
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Fixed Mobile Bottom Navigation Bar -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-cardbg/90 backdrop-blur-md border-t border-bordercol flex items-center justify-around z-40 px-1 safe-bottom-nav">
+    <button onclick="switchTab('dashboard')" class="mob-nav-btn flex flex-col items-center justify-center text-[10px] text-blue-500 font-medium py-1 px-1.5" data-target="dashboard">
+      <i data-lucide="layout-dashboard" class="w-5 h-5 mb-0.5"></i> Dashboard
+    </button>
+    <button onclick="switchTab('trades')" class="mob-nav-btn flex flex-col items-center justify-center text-[10px] text-gray-400 font-medium py-1 px-1.5" data-target="trades">
+      <i data-lucide="list-ordered" class="w-5 h-5 mb-0.5"></i> Trades
+    </button>
+    <button onclick="switchTab('add-trade')" class="flex flex-col items-center justify-center text-white bg-blue-600 w-12 h-12 rounded-full shadow-lg shadow-blue-600/30 -mt-4">
+      <i data-lucide="plus" class="w-6 h-6"></i>
+    </button>
+    <button onclick="switchTab('calendar')" class="mob-nav-btn flex flex-col items-center justify-center text-[10px] text-gray-400 font-medium py-1 px-1.5" data-target="calendar">
+      <i data-lucide="calendar" class="w-5 h-5 mb-0.5"></i> Calendar
+    </button>
+    <button onclick="switchTab('goals')" class="mob-nav-btn flex flex-col items-center justify-center text-[10px] text-gray-400 font-medium py-1 px-1.5" data-target="goals">
+      <i data-lucide="target" class="w-5 h-5 mb-0.5"></i> Goals
+    </button>
+    <button onclick="switchTab('settings')" class="mob-nav-btn flex flex-col items-center justify-center text-[10px] text-gray-400 font-medium py-1 px-1.5" data-target="settings">
+      <i data-lucide="settings" class="w-5 h-5 mb-0.5"></i> Settings
+    </button>
+  </nav>
+
+  <!-- Scrollable Main Content Area -->
+  <main class="flex-1 flex flex-col min-h-screen md:ml-64 md:h-screen md:overflow-y-auto pb-24 md:pb-0">
+    <!-- Mobile Header with Etho AI Branding & User Avatar -->
+    <header class="h-16 border-b border-bordercol bg-cardbg/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+      <div class="flex items-center gap-3">
+        <img src="https://raw.githubusercontent.com/aryansharma1171/webimages/main/Etho%20ai%20logo.webp" alt="Etho AI Logo" class="md:hidden w-7 h-7 object-contain rounded-lg flex-shrink-0" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'28\' height=\'28\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%233b82f6\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polygon points=\'12 2 2 7 12 12 22 7 12 2\'/><polyline points=\'2 17 12 22 22 17\'/><polyline points=\'2 12 12 17 22 12\'/></svg>';" />
+        <div id="header-user-avatar" class="user-avatar-target md:hidden w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs overflow-hidden flex-shrink-0 border border-bordercol cursor-pointer" onclick="switchTab('settings')">
+          A
+        </div>
+        <h2 id="page-title" class="text-base sm:text-lg font-bold">Dashboard</h2>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="switchTab('add-trade')" class="hidden sm:flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all">
+          <i data-lucide="plus" class="w-4 h-4"></i> New Trade
+        </button>
+        <div class="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
+          <i data-lucide="wallet" class="w-4 h-4 text-gray-400"></i>
+          <span id="header-balance" class="text-xs sm:text-sm font-bold text-emerald-400">₹0.00</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="flex-1 p-3 sm:p-6 md:p-8 max-w-7xl w-full mx-auto space-y-6">
+
+      <!-- DASHBOARD -->
+      <section id="view-dashboard" class="space-y-6 view-section">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 id="dash-greeting" class="text-xl sm:text-2xl font-bold tracking-tight">Good evening, Trader 👋</h3>
+            <p class="text-xs sm:text-sm text-gray-400">Here’s your trading performance.</p>
+          </div>
+          <div class="flex items-center gap-2 bg-cardbg border border-bordercol p-1 rounded-xl self-start sm:self-auto">
+            <button onclick="setDashboardRange('all')" class="dash-range-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition-all" data-range="all">All Time</button>
+            <button onclick="setDashboardRange('month')" class="dash-range-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition-all" data-range="month">This Month</button>
+          </div>
+        </div>
+        <div id="dash-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"></div>
+        <div id="dash-equity-container" class="card-glass p-4 sm:p-6 rounded-2xl border border-bordercol">
+          <h4 class="font-bold text-sm sm:text-base mb-4">Equity Curve</h4>
+          <div class="h-64 sm:h-72 w-full"><canvas id="equityChart"></canvas></div>
+        </div>
+      </section>
+
+      <!-- TRADES -->
+      <section id="view-trades" class="space-y-6 view-section hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h3 class="text-xl sm:text-2xl font-bold">Trade History</h3>
+          <button onclick="switchTab('add-trade')" class="bg-blue-600 h-11 px-4 rounded-xl text-sm font-semibold sm:hidden">Add Trade</button>
+        </div>
+        
+        <div class="card-glass p-3 sm:p-4 rounded-xl border border-bordercol flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between text-xs">
+          <div class="grid grid-cols-1 sm:flex flex-wrap gap-2 items-center flex-1">
+            <input type="text" id="filter-search" oninput="renderTrades()" placeholder="Search symbol..." class="w-full sm:w-auto h-11 sm:h-auto bg-darkbg border border-bordercol rounded-xl px-3 py-2 text-gray-200" />
+            <select id="filter-type" onchange="renderTrades()" class="w-full sm:w-auto h-11 sm:h-auto bg-darkbg border border-bordercol rounded-xl px-3 py-2 text-gray-200">
+              <option value="">All Types</option>
+              <option value="Long">Long</option>
+              <option value="Short">Short</option>
+            </select>
+            <select id="filter-result" onchange="renderTrades()" class="w-full sm:w-auto h-11 sm:h-auto bg-darkbg border border-bordercol rounded-xl px-3 py-2 text-gray-200">
+              <option value="">All Results</option>
+              <option value="Win">Win</option>
+              <option value="Loss">Loss</option>
+            </select>
+          </div>
+          <button onclick="resetTradeFilters()" class="h-11 sm:h-auto text-gray-400 hover:text-white px-4 py-2 bg-white/5 rounded-xl text-center">Reset</button>
+        </div>
+
+        <div class="hidden md:block card-glass rounded-2xl border border-bordercol overflow-hidden">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-bordercol text-xs text-gray-400 uppercase bg-white/[0.02]">
+                <th class="p-4">Date</th>
+                <th class="p-4">Symbol</th>
+                <th class="p-4">Type</th>
+                <th class="p-4">Entry → Exit</th>
+                <th class="p-4">P&L</th>
+                <th class="p-4">Result</th>
+                <th class="p-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="trades-table-body" class="divide-y divide-bordercol text-sm"></tbody>
+          </table>
+        </div>
+
+        <div id="trades-card-container" class="grid grid-cols-1 gap-3 md:hidden"></div>
+      </section>
+
+      <!-- ADD TRADE -->
+      <section id="view-add-trade" class="space-y-6 view-section hidden">
+        <h3 class="text-xl sm:text-2xl font-bold">Add New Trade</h3>
+        <form id="add-trade-form" onsubmit="handleTradeSubmit(event)" class="card-glass p-4 sm:p-6 md:p-8 rounded-2xl border border-bordercol space-y-6">
+          <div class="space-y-4">
+            <h4 class="text-xs font-bold text-blue-400 uppercase tracking-wider">Trade Information</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Date *</label>
+                <input type="date" id="trade-date" required class="w-full h-12 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Symbol *</label>
+                <input type="text" id="trade-symbol" required placeholder="EURUSD, BTCUSDT" class="w-full h-12 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200 uppercase" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Trade Type</label>
+                <select id="trade-type" class="w-full h-12 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200">
+                  <option value="Long">LONG</option>
+                  <option value="Short">SHORT</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-4 pt-4 border-t border-bordercol">
+            <h4 class="text-xs font-bold text-blue-400 uppercase tracking-wider">Entry & Exit</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Entry Price *</label>
+                <input type="number" step="any" id="trade-entry" required oninput="calcPreview()" class="w-full h-12 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Exit Price *</label>
+                <input type="number" step="any" id="trade-exit" required oninput="calcPreview()" class="w-full h-12 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Position Size / Quantity *</label>
+                <input type="number" step="any" id="trade-size" required oninput="calcPreview()" class="w-full h-12 bg-darkbg border border-bordercol rounded-xl px-3 text-sm text-gray-200" />
+              </div>
+            </div>
+          </div>
+
+          <div class="p-4 bg-darkbg rounded-xl border border-bordercol flex justify-between items-center text-sm">
+            <span>Estimated Net P&L:</span>
+            <strong id="preview-pnl" class="text-emerald-400 text-base">₹0.00</strong>
+          </div>
+
+          <button type="submit" class="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-base font-semibold shadow-lg shadow-blue-600/30">Save Trade</button>
+        </form>
+      </section>
+
+      <!-- ANALYTICS -->
+      <section id="view-analytics" class="space-y-6 view-section hidden">
+        <h3 class="text-xl sm:text-2xl font-bold">Analytics</h3>
+        <div class="card-glass p-6 rounded-2xl border border-bordercol">
+          <p class="text-sm text-gray-400">Total recorded trades: <strong id="an-total" class="text-white">0</strong></p>
+        </div>
+      </section>
+
+      <!-- CALENDAR SECTION -->
+      <section id="view-calendar" class="space-y-6 view-section hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 id="cal-month-title" class="text-xl sm:text-2xl font-bold tracking-tight">August 2026</h3>
+            <p class="text-xs sm:text-sm text-gray-400">Visual overview of daily trading P&L and frequency.</p>
+          </div>
+          <div class="flex items-center gap-2 self-start sm:self-auto">
+            <button onclick="calNavigate(-1)" class="h-10 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold flex items-center gap-1"><i data-lucide="chevron-left" class="w-4 h-4"></i> Prev</button>
+            <button onclick="calToday()" class="h-10 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold">Today</button>
+            <button onclick="calNavigate(1)" class="h-10 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold flex items-center gap-1">Next <i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+
+        <div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
+          <div><span class="text-gray-400">Monthly P&L</span><p id="cal-sum-pnl" class="text-sm sm:text-base font-bold mt-0.5 text-emerald-400">₹0.00</p></div>
+          <div><span class="text-gray-400">Monthly Return</span><p id="cal-sum-return" class="text-sm sm:text-base font-bold mt-0.5 text-blue-400">0.00%</p></div>
+          <div><span class="text-gray-400">Win Rate / Trades</span><p id="cal-sum-winrate" class="text-sm sm:text-base font-bold mt-0.5 text-gray-200">0% (0 Trades)</p></div>
+          <div><span class="text-gray-400">Winning / Losing Days</span><p id="cal-sum-days" class="text-sm sm:text-base font-bold mt-0.5 text-gray-200">0W / 0L</p></div>
+          <div><span class="text-gray-400">Best / Worst Day</span><p id="cal-sum-bestworst" class="text-sm sm:text-base font-bold mt-0.5 text-purple-400">₹0 / ₹0</p></div>
+        </div>
+
+        <div class="card-glass p-3 sm:p-5 rounded-2xl border border-bordercol">
+          <div class="grid grid-cols-7 gap-1 sm:gap-2 mb-3 text-center text-[10px] sm:text-xs font-bold text-gray-400 uppercase">
+            <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+          </div>
+          <div id="calendar-grid" class="grid grid-cols-7 gap-1 sm:gap-2"></div>
+        </div>
+      </section>
+
+      <!-- GOALS SECTION -->
+      <section id="view-goals" class="space-y-6 view-section hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 class="text-xl sm:text-2xl font-bold tracking-tight">Trading Goals & Habits</h3>
+            <p class="text-xs sm:text-sm text-gray-400">Track discipline, risk management, and performance habits.</p>
+          </div>
+          <button onclick="openGoalFormModal()" class="bg-blue-600 hover:bg-blue-500 text-white h-11 px-4 rounded-xl text-sm font-semibold self-start sm:self-auto flex items-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4"></i> Create Goal
+          </button>
+        </div>
+
+        <div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+          <div><span class="text-gray-400">Active Goals</span><p id="goal-stat-active" class="text-base sm:text-lg font-bold mt-0.5 text-blue-400">0</p></div>
+          <div><span class="text-gray-400">Completed Goals</span><p id="goal-stat-completed" class="text-base sm:text-lg font-bold mt-0.5 text-emerald-400">0</p></div>
+          <div><span class="text-gray-400">In Progress</span><p id="goal-stat-progress" class="text-base sm:text-lg font-bold mt-0.5 text-purple-400">0</p></div>
+          <div><span class="text-gray-400">Overall Progress</span><p id="goal-stat-overall" class="text-base sm:text-lg font-bold mt-0.5 text-gray-200">0%</p></div>
+        </div>
+
+        <div id="goals-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </section>
+
+      <!-- PSYCHOLOGY -->
+      <section id="view-psychology" class="space-y-6 view-section hidden">
+        <h3 class="text-xl sm:text-2xl font-bold">Psychology</h3>
+        <div class="card-glass p-6 rounded-2xl border border-bordercol text-center text-gray-400">Psychology logs active</div>
+      </section>
+
+      <!-- SETTINGS & PROFILE -->
+      <section id="view-settings" class="space-y-6 view-section hidden">
+        <h3 class="text-xl sm:text-2xl font-bold">Settings & Preferences</h3>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- Profile & Avatar Settings -->
+          <div class="card-glass p-5 sm:p-6 rounded-2xl border border-bordercol space-y-4">
+            <div class="flex items-center gap-3">
+              <img src="https://raw.githubusercontent.com/aryansharma1171/webimages/main/Etho%20ai%20logo.webp" alt="Etho AI Logo" class="w-8 h-8 object-contain rounded-lg" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'28\' height=\'28\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%233b82f6\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polygon points=\'12 2 2 7 12 12 22 7 12 2\'/><polyline points=\'2 17 12 22 22 17\'/><polyline points=\'2 12 12 17 22 12\'/></svg>';" />
+              <h4 class="font-bold text-base text-blue-400">Profile & Avatar</h4>
+            </div>
+            
+            <div class="flex items-center gap-4 py-2">
+              <div id="settings-avatar-preview" class="user-avatar-target w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center font-bold text-xl text-white overflow-hidden border border-bordercol flex-shrink-0 shadow-lg">
+                ET
+              </div>
+              <div class="flex flex-col gap-2 flex-1">
+                <div class="flex flex-wrap gap-2">
+                  <label class="h-11 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center cursor-pointer shadow-md">
+                    Upload Image <input type="file" accept="image/jpeg,image/png,image/webp" onchange="handleImageUpload(event)" class="hidden" />
+                  </label>
+                  <label class="h-11 px-4 bg-white/5 hover:bg-white/10 text-gray-200 rounded-xl text-xs font-semibold flex items-center justify-center cursor-pointer border border-bordercol">
+                    Take Photo <input type="file" accept="image/*" capture="environment" onchange="handleImageUpload(event)" class="hidden" />
+                  </label>
+                </div>
+                <button type="button" onclick="promptRemoveProfileImage()" class="text-xs text-rose-400 hover:text-rose-300 text-left font-medium py-1">Remove Image</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Full Name</label>
+              <input type="text" id="setting-fullname" oninput="updateProfileLive()" class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Trading Name / Nickname</label>
+              <input type="text" id="setting-nickname" oninput="updateProfileLive()" class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Starting Balance</label>
+              <input type="number" step="any" id="setting-start-bal" oninput="updateProfileLive()" class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Default Currency</label>
+              <select id="setting-currency" onchange="updateProfileLive()" class="w-full h-11 bg-darkbg border border-bordercol rounded-xl px-3 text-sm">
+                <option value="₹">INR (₹)</option>
+                <option value="$">USD ($)</option>
+                <option value="€">EUR (€)</option>
+                <option value="£">GBP (£)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dashboard Customization & Data Management -->
+          <div class="card-glass p-5 sm:p-6 rounded-2xl border border-bordercol space-y-4">
+            <h4 class="font-bold text-base text-blue-400">Dashboard Customization</h4>
+            <p class="text-xs text-gray-400">Toggle statistics appearing on your dashboard:</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs" id="dash-toggles">
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="totalTrades" checked onchange="updateDashboardConfig()"> Total Trades</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="winningTrades" checked onchange="updateDashboardConfig()"> Winning Trades</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="losingTrades" checked onchange="updateDashboardConfig()"> Losing Trades</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="winRate" checked onchange="updateDashboardConfig()"> Win Rate</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="totalProfit" checked onchange="updateDashboardConfig()"> Total Profit</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="totalLoss" checked onchange="updateDashboardConfig()"> Total Loss</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="netPnl" checked onchange="updateDashboardConfig()"> Net P&L</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="currentBalance" checked onchange="updateDashboardConfig()"> Current Balance</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="startingBalance" checked onchange="updateDashboardConfig()"> Starting Balance</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="profitFactor" checked onchange="updateDashboardConfig()"> Profit Factor</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="avgWin" checked onchange="updateDashboardConfig()"> Average Win</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="avgLoss" checked onchange="updateDashboardConfig()"> Average Loss</label>
+              <label class="flex items-center gap-2 cursor-pointer p-2 bg-white/5 rounded-lg"><input type="checkbox" data-stat="maxDrawdown" checked onchange="updateDashboardConfig()"> Maximum Drawdown</label>
+            </div>
+
+            <h4 class="font-bold text-base text-blue-400 pt-4">Data Management</h4>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="exportJSON()" class="h-11 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-medium">Export JSON</button>
+              <button onclick="exportCSV()" class="h-11 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-medium">Export CSV</button>
+              <label class="h-11 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-medium flex items-center justify-center cursor-pointer">
+                Import JSON <input type="file" accept=".json" onchange="importJSON(event)" class="hidden" />
+              </label>
+              <button onclick="openClearTradeHistoryModal()" class="h-11 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-medium border border-rose-500/30">Clear Trade History</button>
+              <button onclick="openClearModal()" class="col-span-2 h-11 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-xl text-xs font-medium">Clear All Data</button>
+            </div>
+          </div>
+
+          <!-- Contact Support Section -->
+          <div class="card-glass p-5 sm:p-6 rounded-2xl border border-bordercol space-y-4 lg:col-span-2">
+            <div class="flex items-center gap-3">
+              <img src="https://raw.githubusercontent.com/aryansharma1171/webimages/main/Etho%20ai%20logo.webp" alt="Etho AI Logo" class="w-7 h-7 object-contain rounded-md" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%233b82f6\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polygon points=\'12 2 2 7 12 12 22 7 12 2\'/><polyline points=\'2 17 12 22 22 17\'/><polyline points=\'2 12 12 17 22 12\'/></svg>';" />
+              <h4 class="font-bold text-base text-blue-400">Need Help?</h4>
+            </div>
+            <p class="text-xs text-gray-400">Contact our support team for questions, bugs, or feedback.</p>
+            <div class="flex flex-col sm:flex-row gap-3 pt-2">
+              <a href="mailto:aryansharma98g@gmail.com?subject=Etho%20Trading%20Journal%20-%20Support%20Request" onclick="showToast('Opening email client...', 'info')" class="flex-1 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-md">
+                <i data-lucide="mail" class="w-4 h-4"></i> Email Primary (aryansharma98g@gmail.com)
+              </a>
+              <a href="mailto:etho98g@gmail.com?subject=Etho%20Trading%20Journal%20-%20Support%20Request" onclick="showToast('Opening email client...', 'info')" class="flex-1 h-12 bg-white/5 hover:bg-white/10 text-gray-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border border-bordercol transition-all">
+                <i data-lucide="mail" class="w-4 h-4"></i> Email Secondary (etho98g@gmail.com)
+              </a>
+            </div>
+            <div class="pt-2">
+              <button onclick="switchTab('manual')" class="w-full h-12 bg-white/5 hover:bg-white/10 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all">
+                <i data-lucide="book-open" class="w-4 h-4"></i> Open User Manual & Guide
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- USER MANUAL SECTION -->
+      <section id="view-manual" class="space-y-6 view-section hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <img src="https://raw.githubusercontent.com/aryansharma1171/webimages/main/Etho%20ai%20logo.webp" alt="Etho AI Logo" class="w-10 h-10 object-contain rounded-xl" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'36\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%233b82f6\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><polygon points=\'12 2 2 7 12 12 22 7 12 2\'/><polyline points=\'2 17 12 22 22 17\'/><polyline points=\'2 12 12 17 22 12\'/></svg>';" />
+            <div>
+              <h3 class="text-xl sm:text-2xl font-bold tracking-tight">User Manual & Guide</h3>
+              <p class="text-xs sm:text-sm text-gray-400">Learn how to use every feature of Etho Trading Journal.</p>
+            </div>
+          </div>
+          <div class="relative w-full sm:w-72">
+            <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-3.5"></i>
+            <input type="text" id="manual-search" oninput="filterUserManual()" placeholder="Search user manual..." class="w-full h-11 bg-darkbg border border-bordercol rounded-xl pl-9 pr-4 text-xs text-gray-200 focus:outline-none focus:border-blue-500" />
+          </div>
+        </div>
+
+        <div id="manual-accordion-container" class="space-y-3">
+          <div class="card-glass rounded-2xl border border-bordercol overflow-hidden manual-card">
+            <button onclick="toggleManualAccordion(this)" class="w-full p-4 sm:p-5 flex justify-between items-center text-left font-bold text-sm sm:text-base hover:bg-white/5 transition-all">
+              <span class="flex items-center gap-3"><i data-lucide="rocket" class="w-5 h-5 text-blue-400"></i> 1. Getting Started</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+            <div class="hidden p-4 sm:p-5 pt-0 text-xs sm:text-sm text-gray-300 space-y-3 border-t border-bordercol/50">
+              <p>Welcome to Etho Trading Journal! When you open the app for the first time, you will be greeted by a quick setup screen where you can enter your full name, preferred trading nickname, and starting balance.</p>
+            </div>
+          </div>
+
+          <div class="card-glass rounded-2xl border border-bordercol overflow-hidden manual-card">
+            <button onclick="toggleManualAccordion(this)" class="w-full p-4 sm:p-5 flex justify-between items-center text-left font-bold text-sm sm:text-base hover:bg-white/5 transition-all">
+              <span class="flex items-center gap-3"><i data-lucide="layout-dashboard" class="w-5 h-5 text-blue-400"></i> 2. Dashboard</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+            <div class="hidden p-4 sm:p-5 pt-0 text-xs sm:text-sm text-gray-300 space-y-3 border-t border-bordercol/50">
+              <p>The Dashboard provides a real-time summary of your trading performance. All metrics update automatically as you add trades.</p>
+            </div>
+          </div>
+
+          <div class="card-glass rounded-2xl border border-bordercol overflow-hidden manual-card">
+            <button onclick="toggleManualAccordion(this)" class="w-full p-4 sm:p-5 flex justify-between items-center text-left font-bold text-sm sm:text-base hover:bg-white/5 transition-all">
+              <span class="flex items-center gap-3"><i data-lucide="plus-circle" class="w-5 h-5 text-blue-400"></i> 3. Adding a Trade</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+            <div class="hidden p-4 sm:p-5 pt-0 text-xs sm:text-sm text-gray-300 space-y-3 border-t border-bordercol/50">
+              <p>Tap <strong>Add Trade</strong> to record a new position, select Long or Short, input prices, and save.</p>
+            </div>
+          </div>
+
+          <div class="card-glass rounded-2xl border border-bordercol overflow-hidden manual-card">
+            <button onclick="toggleManualAccordion(this)" class="w-full p-4 sm:p-5 flex justify-between items-center text-left font-bold text-sm sm:text-base hover:bg-white/5 transition-all">
+              <span class="flex items-center gap-3"><i data-lucide="list-ordered" class="w-5 h-5 text-blue-400"></i> 4. Trade History</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+            <div class="hidden p-4 sm:p-5 pt-0 text-xs sm:text-sm text-gray-300 space-y-3 border-t border-bordercol/50">
+              <p>Review all past trades in a clean table or cards, search, filter, and delete as needed.</p>
+            </div>
+          </div>
+
+          <div class="card-glass rounded-2xl border border-bordercol overflow-hidden manual-card">
+            <button onclick="toggleManualAccordion(this)" class="w-full p-4 sm:p-5 flex justify-between items-center text-left font-bold text-sm sm:text-base hover:bg-white/5 transition-all">
+              <span class="flex items-center gap-3"><i data-lucide="calendar" class="w-5 h-5 text-blue-400"></i> 5. Calendar</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+            <div class="hidden p-4 sm:p-5 pt-0 text-xs sm:text-sm text-gray-300 space-y-3 border-t border-bordercol/50">
+              <p>The Calendar view displays a monthly grid with daily P&L totals and color indicators.</p>
+            </div>
+          </div>
+
+          <div class="card-glass rounded-2xl border border-bordercol overflow-hidden manual-card">
+            <button onclick="toggleManualAccordion(this)" class="w-full p-4 sm:p-5 flex justify-between items-center text-left font-bold text-sm sm:text-base hover:bg-white/5 transition-all">
+              <span class="flex items-center gap-3"><i data-lucide="pie-chart" class="w-5 h-5 text-blue-400"></i> 6. Analytics</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+            <div class="hidden p-4 sm:p-5 pt-0 text-xs sm:text-sm text-gray-300 space-y-3 border-t border-bordercol/50">
+              <p>Analyze your trading metrics and overall consistency.</p>
+            </div>
+          </div>
+
+          <div class="card-glass rounded-2xl border border-bordercol overflow-hidden manual-card">
+            <button onclick="toggleManualAccordion(this)" class="w-full p-4 sm:p-5 flex justify-between items-center text-left font-bold text-sm sm:text-base hover:bg-white/5 transition-all">
+              <span class="flex items-center gap-3"><i data-lucide="target" class="w-5 h-5 text-blue-400"></i> 7. Goals</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+            <div class="hidden p-4 sm:p-5 pt-0 text-xs sm:text-sm text-gray-300 space-y-3 border-t border-bordercol/50">
+              <p>Track discipline and habits. Complete or pause goals anytime.</p>
+            </div>
+          </div>
+
+          <div class="card-glass rounded-2xl border border-bordercol overflow-hidden manual-card">
+            <button onclick="toggleManualAccordion(this)" class="w-full p-4 sm:p-5 flex justify-between items-center text-left font-bold text-sm sm:text-base hover:bg-white/5 transition-all">
+              <span class="flex items-center gap-3"><i data-lucide="user" class="w-5 h-5 text-blue-400"></i> 8. Profile & Avatar</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+            <div class="hidden p-4 sm:p-5 pt-0 text-xs sm:text-sm text-gray-300 space-y-3 border-t border-bordercol/50">
+              <p>Upload or capture a profile image. Your avatar synchronizes instantly across the sidebar, header, and settings.</p>
+            </div>
+          </div>
+
+          <div class="card-glass rounded-2xl border border-bordercol overflow-hidden manual-card">
+            <button onclick="toggleManualAccordion(this)" class="w-full p-4 sm:p-5 flex justify-between items-center text-left font-bold text-sm sm:text-base hover:bg-white/5 transition-all">
+              <span class="flex items-center gap-3"><i data-lucide="wallet" class="w-5 h-5 text-blue-400"></i> 9. Starting Balance</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+            <div class="hidden p-4 sm:p-5 pt-0 text-xs sm:text-sm text-gray-300 space-y-3 border-t border-bordercol/50">
+              <p>Default starting balance is ₹0. Current Balance = Starting Balance + Total Net P&L.</p>
+            </div>
+          </div>
+
+          <div class="card-glass rounded-2xl border border-bordercol overflow-hidden manual-card">
+            <button onclick="toggleManualAccordion(this)" class="w-full p-4 sm:p-5 flex justify-between items-center text-left font-bold text-sm sm:text-base hover:bg-white/5 transition-all">
+              <span class="flex items-center gap-3"><i data-lucide="database" class="w-5 h-5 text-blue-400"></i> 10. Data & Backup</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+            </button>
+            <div class="hidden p-4 sm:p-5 pt-0 text-xs sm:text-sm text-gray-300 space-y-3 border-t border-bordercol/50">
+              <p>Export/import JSON backups or clear trade history safely.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    let profile = JSON.parse(localStorage.getItem('etho_profile') || 'null');
+    let trades = JSON.parse(localStorage.getItem('etho_trades') || '[]');
+    let goals = JSON.parse(localStorage.getItem('etho_goals') || '[]');
+    let dashConfig = JSON.parse(localStorage.getItem('etho_dash_config') || '{"totalTrades":true,"winningTrades":true,"losingTrades":true,"winRate":true,"totalProfit":true,"totalLoss":true,"netPnl":true,"currentBalance":true,"startingBalance":true,"profitFactor":true,"avgWin":true,"avgLoss":true,"maxDrawdown":true}');
+    let activeCharts = {};
+
+    let calYear = new Date().getFullYear();
+    let calMonth = new Date().getMonth();
+    let currentDashboardRange = 'all';
+    let currentGoalModalId = null;
+    let pendingConfirmCallback = null;
+
+    function sanitizeNumber(val) {
+      if (typeof val === 'number') return isNaN(val) ? 0 : val;
+      if (!val) return 0;
+      const cleaned = String(val).replace(/[^\d.-]/g, '');
+      const num = Number(cleaned);
+      return isNaN(num) ? 0 : num;
+    }
+
+    // --- GLOBAL PROFILE AVATAR SYNCHRONIZATION ---
+    function updateAllAvatars() {
+      const nameToShow = profile ? (profile.nickname || profile.fullName || 'Trader') : 'Trader';
+      const initial = nameToShow.charAt(0).toUpperCase();
+
+      document.querySelectorAll('.user-avatar-target').forEach(el => {
+        if (profile && profile.avatar) {
+          el.innerHTML = `<img src="${profile.avatar}" class="w-full h-full object-cover" />`;
+          el.className = el.className.replace(/bg-[^\s]+/g, '') + ' overflow-hidden border border-bordercol flex-shrink-0';
+        } else {
+          el.textContent = initial;
+          if (!el.className.includes('bg-blue-600') && !el.className.includes('bg-gradient')) {
+            el.className += ' bg-blue-600 text-white font-bold flex items-center justify-center overflow-hidden flex-shrink-0';
+          }
+        }
+      });
+    }
+
+    // --- USER MANUAL ACCORDION & SEARCH ---
+    function toggleManualAccordion(btn) {
+      const content = btn.nextElementSibling;
+      const icon = btn.querySelector('[data-lucide="chevron-down"]');
+      if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        if (icon) icon.style.transform = 'rotate(180deg)';
+      } else {
+        content.classList.add('hidden');
+        if (icon) icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    function filterUserManual() {
+      const query = document.getElementById('manual-search').value.toLowerCase().trim();
+      const cards = document.querySelectorAll('.manual-card');
+      
+      cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        if (text.includes(query)) {
+          card.style.display = 'block';
+          if (query.length > 2) {
+            card.querySelector('div').classList.remove('hidden');
+          }
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    // --- MODERN TOAST NOTIFICATION SYSTEM ---
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      let iconSymbol = '✓';
+      let bgColor = 'bg-emerald-600';
+
+      if (type === 'error') {
+        iconSymbol = '✕';
+        bgColor = 'bg-rose-600';
+      } else if (type === 'warning') {
+        iconSymbol = '⚠';
+        bgColor = 'bg-yellow-600';
+      } else if (type === 'info' || type === 'pause') {
+        iconSymbol = type === 'pause' ? '⏸' : 'ℹ';
+        bgColor = 'bg-blue-600';
+      } else if (type === 'resume') {
+        iconSymbol = '▶';
+        bgColor = 'bg-blue-600';
+      }
+
+      toast.className = `${bgColor} text-white px-4 py-3 rounded-xl shadow-xl text-xs sm:text-sm font-medium flex items-center justify-between gap-3 animate-fade-in pointer-events-auto`;
+      toast.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span class="font-bold">${iconSymbol}</span>
+          <span>${message}</span>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-white/80 hover:text-white font-bold ml-2">×</button>
+      `;
+
+      container.appendChild(toast);
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.style.opacity = '0';
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, 3500);
+    }
+
+    // --- CUSTOM IN-APP CONFIRMATION MODAL ---
+    function showGenericConfirm(title, message, detailsHtml, confirmText, callback, isDestructive = true) {
+      document.getElementById('generic-confirm-title').textContent = title;
+      document.getElementById('generic-confirm-desc').textContent = message;
+      
+      const detailsEl = document.getElementById('generic-confirm-details');
+      if (detailsHtml) {
+        detailsEl.innerHTML = detailsHtml;
+        detailsEl.classList.remove('hidden');
+      } else {
+        detailsEl.classList.add('hidden');
+      }
+
+      const confirmBtn = document.getElementById('generic-confirm-btn');
+      confirmBtn.textContent = confirmText || 'Confirm';
+      confirmBtn.className = `flex-1 h-11 rounded-xl text-xs font-semibold text-white ${isDestructive ? 'bg-rose-600 hover:bg-rose-500' : 'bg-blue-600 hover:bg-blue-500'}`;
+
+      pendingConfirmCallback = callback;
+      document.getElementById('generic-confirm-modal').classList.remove('hidden');
+    }
+
+    function closeGenericConfirm() {
+      document.getElementById('generic-confirm-modal').classList.add('hidden');
+      pendingConfirmCallback = null;
+    }
+
+    function executeGenericConfirm() {
+      if (typeof pendingConfirmCallback === 'function') {
+        pendingConfirmCallback();
+      }
+      closeGenericConfirm();
+    }
+
+    function checkFirstTimeSetup() {
+      if (!profile || !profile.fullName) {
+        document.getElementById('setup-modal').classList.remove('hidden');
+      } else {
+        applyProfileToUI();
+      }
+    }
+
+    function handleInitialSetup(e) {
+      e.preventDefault();
+      const fullName = document.getElementById('setup-fullname').value.trim();
+      const nickname = document.getElementById('setup-nickname').value.trim();
+      const startBal = parseFloat(document.getElementById('setup-startbal').value) || 0;
+      
+      profile = {
+        fullName,
+        nickname: nickname || fullName.split(' ')[0],
+        startingBalance: startBal,
+        currency: '₹',
+        risk: 1,
+        tradeType: 'Long',
+        timeframe: '1H'
+      };
+
+      localStorage.setItem('etho_profile', JSON.stringify(profile));
+      document.getElementById('setup-modal').classList.add('hidden');
+      showToast("Profile set up successfully!", "success");
+      applyProfileToUI();
+      renderDashboard();
+    }
+
+    // --- PROFILE IMAGE COMPRESSION & HANDLING ---
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) {
+        showToast("Please select a valid image file", "warning");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 512;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          if (!profile) profile = {};
+          profile.avatar = compressedDataUrl;
+          localStorage.setItem('etho_profile', JSON.stringify(profile));
+
+          applyProfileToUI();
+          showToast("Profile image updated successfully", "success");
+        };
+        img.onerror = function() {
+          showToast("Failed to load image file", "error");
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function promptRemoveProfileImage() {
+      if (!profile || !profile.avatar) {
+        showToast("No profile image to remove", "warning");
+        return;
+      }
+      showGenericConfirm(
+        "Remove Profile Image?",
+        "Are you sure you want to remove your profile picture? Your initials will be displayed instead.",
+        null,
+        "Remove Image",
+        () => {
+          delete profile.avatar;
+          localStorage.setItem('etho_profile', JSON.stringify(profile));
+          applyProfileToUI();
+          showToast("Profile image removed", "info");
+        }
+      );
+    }
+
+    function applyProfileToUI() {
+      if (!profile) return;
+      const nameToShow = profile.nickname || profile.fullName;
+      
+      updateAllAvatars();
+
+      document.getElementById('sidebar-username').textContent = nameToShow;
+      
+      const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
+      setVal('setting-fullname', profile.fullName);
+      setVal('setting-nickname', profile.nickname);
+      setVal('setting-start-bal', profile.startingBalance !== undefined ? profile.startingBalance : 0);
+      setVal('setting-currency', profile.currency || '₹');
+
+      const hour = new Date().getHours();
+      let timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+      const greetingEl = document.getElementById('dash-greeting');
+      if (greetingEl) greetingEl.textContent = `${timeGreeting}, ${nameToShow} 👋`;
+    }
+
+    function updateProfileLive() {
+      if (!profile) profile = {};
+      profile.fullName = document.getElementById('setting-fullname').value;
+      profile.nickname = document.getElementById('setting-nickname').value;
+      profile.startingBalance = parseFloat(document.getElementById('setting-start-bal').value) || 0;
+      profile.currency = document.getElementById('setting-currency').value;
+
+      localStorage.setItem('etho_profile', JSON.stringify(profile));
+      applyProfileToUI();
+      renderDashboard();
+    }
+
+    function updateDashboardConfig() {
+      const toggles = document.querySelectorAll('#dash-toggles input[type="checkbox"]');
+      toggles.forEach(cb => {
+        dashConfig[cb.dataset.stat] = cb.checked;
+      });
+      localStorage.setItem('etho_dash_config', JSON.stringify(dashConfig));
+      renderDashboard();
+    }
+
+    function setDashboardRange(range) {
+      currentDashboardRange = range;
+      document.querySelectorAll('.dash-range-btn').forEach(b => {
+        if (b.dataset.range === range) {
+          b.className = "dash-range-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white transition-all";
+        } else {
+          b.className = "dash-range-btn px-3 py-1.5 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition-all";
+        }
+      });
+      renderDashboard();
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
+      const target = document.getElementById(`view-${tab}`);
+      if (target) target.classList.remove('hidden');
+      
+      const titleEl = document.getElementById('page-title');
+      if (titleEl) titleEl.textContent = tab === 'goals' ? 'Trading Goals' : tab === 'manual' ? 'User Manual' : tab.charAt(0).toUpperCase() + tab.slice(1);
+      
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.target === tab) {
+          btn.className = "nav-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all bg-white/10 text-white";
+        } else {
+          btn.className = "nav-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium text-sm transition-all text-gray-400 hover:text-white hover:bg-white/5";
+        }
+      });
+
+      document.querySelectorAll('.mob-nav-btn').forEach(btn => {
+        if (btn.dataset.target === tab) {
+          btn.className = "mob-nav-btn flex flex-col items-center justify-center text-[10px] text-blue-500 font-medium py-1 px-1.5";
+        } else {
+          btn.className = "mob-nav-btn flex flex-col items-center justify-center text-[10px] text-gray-400 font-medium py-1 px-1.5";
+        }
+      });
+
+      if (tab === 'dashboard') renderDashboard();
+      if (tab === 'trades') renderTrades();
+      if (tab === 'calendar') renderCalendar();
+      if (tab === 'analytics') renderAnalytics();
+      if (tab === 'goals') renderGoals();
+      
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function calcPreview() {
+      const type = document.getElementById('trade-type').value;
+      const entry = parseFloat(document.getElementById('trade-entry').value) || 0;
+      const exit = parseFloat(document.getElementById('trade-exit').value) || 0;
+      const size = parseFloat(document.getElementById('trade-size').value) || 0;
+      const pnl = type === 'Long' ? (exit - entry) * size : (entry - exit) * size;
+      const curr = profile ? (profile.currency || '₹') : '₹';
+      const el = document.getElementById('preview-pnl');
+      if (el) {
+        el.textContent = `${pnl >= 0 ? '+' : ''}${curr}${pnl.toFixed(2)}`;
+        el.className = pnl >= 0 ? 'text-emerald-400 font-bold text-base' : 'text-rose-400 font-bold text-base';
+      }
+    }
+
+    function handleTradeSubmit(e) {
+      e.preventDefault();
+      const type = document.getElementById('trade-type').value;
+      const entry = parseFloat(document.getElementById('trade-entry').value);
+      const exit = parseFloat(document.getElementById('trade-exit').value);
+      const size = parseFloat(document.getElementById('trade-size').value);
+      
+      if (isNaN(entry) || isNaN(exit) || isNaN(size)) {
+        showToast("Please enter valid numeric values", "warning");
+        return;
+      }
+
+      const pnl = type === 'Long' ? (exit - entry) * size : (entry - exit) * size;
+
+      const trade = {
+        id: Date.now(),
+        date: document.getElementById('trade-date').value,
+        symbol: document.getElementById('trade-symbol').value.toUpperCase(),
+        type, entry, exit, size,
+        netPnl: sanitizeNumber(pnl),
+        result: pnl > 0 ? 'Win' : pnl < 0 ? 'Loss' : 'Break-even'
+      };
+
+      trades.push(trade);
+      localStorage.setItem('etho_trades', JSON.stringify(trades));
+      showToast("Trade saved successfully", "success");
+      document.getElementById('add-trade-form').reset();
+      updateGoalsAutoProgress();
+      switchTab('trades');
+    }
+
+    function promptDeleteTrade(id) {
+      showGenericConfirm(
+        "Delete Trade?",
+        "Are you sure you want to delete this trade? This will recalculate your account balance and statistics.",
+        null,
+        "Delete Trade",
+        () => {
+          trades = trades.filter(t => t.id !== id);
+          localStorage.setItem('etho_trades', JSON.stringify(trades));
+          showToast("Trade deleted", "error");
+          updateGoalsAutoProgress();
+          renderTrades();
+          renderDashboard();
+        }
+      );
+    }
+
+    function resetTradeFilters() {
+      document.getElementById('filter-search').value = '';
+      document.getElementById('filter-type').value = '';
+      document.getElementById('filter-result').value = '';
+      renderTrades();
+    }
+
+    function renderTrades() {
+      const tbody = document.getElementById('trades-table-body');
+      const cardContainer = document.getElementById('trades-card-container');
+      const curr = profile ? (profile.currency || '₹') : '₹';
+      
+      const search = document.getElementById('filter-search').value.toLowerCase();
+      const type = document.getElementById('filter-type').value;
+      const res = document.getElementById('filter-result').value;
+
+      const filtered = trades.filter(t => {
+        if (search && !t.symbol.toLowerCase().includes(search)) return false;
+        if (type && t.type !== type) return false;
+        if (res && t.result !== res) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-gray-400">No trades found</td></tr>';
+        if (cardContainer) cardContainer.innerHTML = '<div class="card-glass p-8 rounded-2xl text-center text-gray-400 text-xs">No trades found</div>';
+        return;
+      }
+      
+      if (tbody) {
+        tbody.innerHTML = filtered.map(t => {
+          const pnl = sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL);
+          return `
+            <tr class="border-b border-bordercol/50">
+              <td class="p-4 text-gray-300">${t.date}</td>
+              <td class="p-4 font-bold">${t.symbol}</td>
+              <td class="p-4"><span class="px-2 py-0.5 rounded text-xs font-bold ${t.type === 'Long' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${t.type}</span></td>
+              <td class="p-4">${t.entry} → ${t.exit}</td>
+              <td class="p-4 font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${pnl >= 0 ? '+' : ''}${curr}${pnl.toFixed(2)}</td>
+              <td class="p-4"><span class="px-2 py-0.5 rounded-full text-xs font-semibold ${t.result === 'Win' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${t.result}</span></td>
+              <td class="p-4 text-right"><button onclick="promptDeleteTrade(${t.id})" class="text-gray-400 hover:text-rose-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button></td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      if (cardContainer) {
+        cardContainer.innerHTML = filtered.map(t => {
+          const pnl = sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL);
+          return `
+            <div class="card-glass p-4 rounded-2xl border border-bordercol space-y-3">
+              <div class="flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-sm">${t.symbol}</span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${t.type === 'Long' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${t.type}</span>
+                </div>
+                <span class="text-[10px] text-gray-400">${t.date}</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-xs py-2 border-t border-b border-bordercol/50">
+                <div><span class="text-gray-400">Entry:</span> <strong class="text-gray-200">${t.entry}</strong></div>
+                <div><span class="text-gray-400">Exit:</span> <strong class="text-gray-200">${t.exit}</strong></div>
+              </div>
+              <div class="flex justify-between items-center">
+                <div>
+                  <span class="text-[10px] text-gray-400">Net P&L</span>
+                  <p class="font-bold text-sm ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${pnl >= 0 ? '+' : ''}${curr}${pnl.toFixed(2)}</p>
+                </div>
+                <button onclick="promptDeleteTrade(${t.id})" class="h-9 px-3 bg-rose-500/10 text-rose-400 rounded-xl text-xs font-semibold">Delete</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // --- CLEAR TRADE HISTORY SPECIFIC FUNCTION ---
+    function openClearTradeHistoryModal() {
+      showGenericConfirm(
+        "Clear Trade History?",
+        "This will permanently delete all saved trades and their related trade screenshots. Your profile, starting balance, goals, and app settings will not be deleted.",
+        null,
+        "Clear Trade History",
+        () => {
+          trades = [];
+          localStorage.setItem('etho_trades', JSON.stringify(trades));
+          showToast("Trade history cleared successfully", "success");
+          renderDashboard();
+          renderTrades();
+          renderCalendar();
+          renderGoals();
+        }
+      );
+    }
+
+    // --- GOALS MODULE WITH COMPLETE & PAUSE CONTROLS ---
+    function updateGoalsAutoProgress() {
+      if (!goals || goals.length === 0) return;
+      
+      let updated = goals.map(g => {
+        if (g.status === 'Completed' || g.paused || g.status === 'Paused') return g;
+        let current = g.current || 0;
+        
+        if (g.type === 'target_win_rate') {
+          const total = trades.length;
+          const wins = trades.filter(t => sanitizeNumber(t.netPnl) > 0).length;
+          current = total > 0 ? Number(((wins / total) * 100).toFixed(1)) : 0;
+        } else if (g.type === 'target_profitable_days') {
+          let dayMap = {};
+          trades.forEach(t => {
+            if (!t.date) return;
+            if (!dayMap[t.date]) dayMap[t.date] = 0;
+            dayMap[t.date] += sanitizeNumber(t.netPnl);
+          });
+          current = Object.values(dayMap).filter(pnl => pnl > 0).length;
+        } else if (g.type === 'target_profit_factor') {
+          const prof = trades.filter(t => sanitizeNumber(t.netPnl) > 0).reduce((s, t) => s + sanitizeNumber(t.netPnl), 0);
+          const loss = Math.abs(trades.filter(t => sanitizeNumber(t.netPnl) < 0).reduce((s, t) => s + sanitizeNumber(t.netPnl), 0));
+          current = loss > 0 ? Number((prof / loss).toFixed(2)) : prof > 0 ? g.target : 0;
+        } else if (g.type === 'journal_every_day') {
+          let uniqueDays = new Set(trades.map(t => t.date)).size;
+          current = uniqueDays;
+        }
+
+        let isCompleted = current >= g.target;
+        let status = g.status;
+
+        if (isCompleted && status !== 'Completed') {
+          status = 'Completed';
+          g.completedDate = new Date().toISOString().split('T')[0];
+          showToast(`Goal completed`, 'success');
+        } else if (!isCompleted && status !== 'Paused') {
+          status = 'On Track';
+        }
+
+        return { ...g, current, status };
+      });
+
+      goals = updated;
+      localStorage.setItem('etho_goals', JSON.stringify(goals));
+    }
+
+    function renderGoals() {
+      updateGoalsAutoProgress();
+      const grid = document.getElementById('goals-grid');
+      if (!grid) return;
+
+      const activeCount = goals.filter(g => g.status !== 'Completed' && !g.paused).length;
+      const completedCount = goals.filter(g => g.status === 'Completed').length;
+      const inProgCount = goals.filter(g => g.status === 'On Track' || g.status === 'In Progress').length;
+      const overallPct = goals.length > 0 ? Math.round(goals.reduce((s, g) => s + Math.min(100, (g.current / g.target) * 100), 0) / goals.length) : 0;
+
+      document.getElementById('goal-stat-active').textContent = activeCount;
+      document.getElementById('goal-stat-completed').textContent = completedCount;
+      document.getElementById('goal-stat-progress').textContent = inProgCount;
+      document.getElementById('goal-stat-overall').textContent = `${overallPct}%`;
+
+      if (goals.length === 0) {
+        grid.innerHTML = '<div class="col-span-full card-glass p-8 rounded-2xl text-center text-gray-400 text-xs">No goals created yet. Click "Create Goal" to start tracking discipline and habits.</div>';
+        return;
+      }
+
+      grid.innerHTML = goals.map(g => {
+        const pct = Math.min(100, Math.max(0, Math.round((g.current / g.target) * 100)));
+        let badgeColor = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+        if (g.status === 'Completed') badgeColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        if (g.status === 'On Track') badgeColor = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        if (g.paused || g.status === 'Paused') badgeColor = 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+
+        let actionButtons = '';
+        if (g.status === 'Completed') {
+          actionButtons = `
+            <button onclick="openGoalModal(${g.id})" class="flex-1 h-10 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-semibold">View Details</button>
+            <button onclick="promptDeleteGoal(${g.id})" class="h-10 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold">Delete</button>
+          `;
+        } else if (g.paused || g.status === 'Paused') {
+          actionButtons = `
+            <button onclick="resumeGoal(${g.id})" class="flex-1 h-10 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold">Resume Goal</button>
+            <button onclick="promptDeleteGoal(${g.id})" class="h-10 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold">Delete</button>
+          `;
+        } else {
+          actionButtons = `
+            <button onclick="promptCompleteGoal(${g.id})" class="flex-1 h-10 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 rounded-xl text-xs font-semibold border border-emerald-500/30">Complete Goal</button>
+            <button onclick="promptPauseGoal(${g.id})" class="flex-1 h-10 bg-white/5 hover:bg-white/10 text-gray-200 rounded-xl text-xs font-semibold border border-bordercol">Pause Goal</button>
+          `;
+        }
+
+        return `
+          <div class="card-glass p-5 rounded-2xl border border-bordercol space-y-4 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex justify-between items-start gap-2">
+                <div>
+                  <span class="text-[10px] text-blue-400 font-semibold uppercase tracking-wider">${formatGoalType(g.type)}</span>
+                  <h4 class="font-bold text-sm sm:text-base mt-0.5">${g.name}</h4>
+                </div>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${badgeColor}">${g.paused ? 'Paused' : g.status}</span>
+              </div>
+
+              <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs text-gray-400">
+                  <span>Progress: <strong class="text-gray-200">${g.current} / ${g.target}</strong></span>
+                  <span class="font-semibold text-blue-400">${pct}%</span>
+                </div>
+                <div class="w-full bg-darkbg h-2 rounded-full overflow-hidden border border-bordercol">
+                  <div class="bg-blue-600 h-full transition-all" style="width: ${pct}%"></div>
+                </div>
+              </div>
+
+              <div class="text-[11px] text-gray-400">
+                <span>Timeline: ${g.start} → ${g.end}</span>
+              </div>
+            </div>
+
+            <div class="flex gap-2 pt-3 border-t border-bordercol/50">
+              ${actionButtons}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function formatGoalType(type) {
+      const map = {
+        max_trades_day: 'Trading Discipline',
+        max_daily_loss: 'Risk Management',
+        follow_plan: 'Trading Plan',
+        target_win_rate: 'Performance Target',
+        target_profit_factor: 'Performance Target',
+        target_profitable_days: 'Performance Target',
+        journal_every_day: 'Habit & Learning',
+        record_mistakes: 'Habit & Learning'
+      };
+      return map[type] || 'General Goal';
+    }
+
+    function promptCompleteGoal(id) {
+      const g = goals.find(item => item.id === id);
+      if (!g) return;
+      showGenericConfirm(
+        "Complete Goal?",
+        `Are you sure you want to mark "${g.name}" as completed?`,
+        `<div><strong>Current Progress:</strong> ${g.current} / ${g.target}</div>`,
+        "Complete Goal",
+        () => {
+          const today = new Date().toISOString().split('T')[0];
+          goals = goals.map(item => item.id === id ? { ...item, status: 'Completed', completedDate: today, paused: false } : item);
+          localStorage.setItem('etho_goals', JSON.stringify(goals));
+          showToast("Goal completed", "success");
+          renderGoals();
+        },
+        false
+      );
+    }
+
+    function promptPauseGoal(id) {
+      const g = goals.find(item => item.id === id);
+      if (!g) return;
+      showGenericConfirm(
+        "Pause Goal?",
+        `Are you sure you want to pause "${g.name}"? Automatic progress updates will stop.`,
+        null,
+        "Pause Goal",
+        () => {
+          const today = new Date().toISOString().split('T')[0];
+          goals = goals.map(item => item.id === id ? { ...item, status: 'Paused', paused: true, pausedDate: today } : item);
+          localStorage.setItem('etho_goals', JSON.stringify(goals));
+          showToast("Goal paused", "pause");
+          renderGoals();
+        },
+        false
+      );
+    }
+
+    function resumeGoal(id) {
+      const today = new Date().toISOString().split('T')[0];
+      goals = goals.map(g => g.id === id ? { ...g, status: 'On Track', paused: false, resumedDate: today } : g);
+      localStorage.setItem('etho_goals', JSON.stringify(goals));
+      showToast("Goal resumed", "resume");
+      renderGoals();
+    }
+
+    function promptDeleteGoal(id) {
+      showGenericConfirm(
+        "Delete Goal?",
+        "Are you sure you want to permanently delete this goal?",
+        null,
+        "Delete Goal",
+        () => {
+          goals = goals.filter(g => g.id !== id);
+          localStorage.setItem('etho_goals', JSON.stringify(goals));
+          showToast("Goal deleted", "error");
+          renderGoals();
+        }
+      );
+    }
+
+    function openGoalFormModal() {
+      document.getElementById('edit-goal-id').value = '';
+      document.getElementById('form-goal-name').value = '';
+      document.getElementById('form-goal-target').value = '';
+      document.getElementById('form-goal-startval').value = '0';
+      document.getElementById('form-goal-desc').value = '';
+      document.getElementById('form-goal-startdate').valueAsDate = new Date();
+      let nextMonth = new Date();
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      document.getElementById('form-goal-enddate').valueAsDate = nextMonth;
+      document.getElementById('goal-form-title').textContent = 'Create New Goal';
+      document.getElementById('goal-form-modal').classList.remove('hidden');
+    }
+
+    function closeGoalFormModal() {
+      document.getElementById('goal-form-modal').classList.add('hidden');
+    }
+
+    function handleGoalFormSubmit(e) {
+      e.preventDefault();
+      const editId = document.getElementById('edit-goal-id').value;
+      const name = document.getElementById('form-goal-name').value;
+      const type = document.getElementById('form-goal-type').value;
+      const target = parseFloat(document.getElementById('form-goal-target').value);
+      const startVal = parseFloat(document.getElementById('form-goal-startval').value) || 0;
+      const start = document.getElementById('form-goal-startdate').value;
+      const end = document.getElementById('form-goal-enddate').value;
+      const description = document.getElementById('form-goal-desc').value;
+
+      if (editId) {
+        goals = goals.map(g => g.id === parseInt(editId) ? { ...g, name, type, target, start, end, description } : g);
+        showToast("Goal updated successfully", "success");
+      } else {
+        const newGoal = {
+          id: Date.now(),
+          name, type, target,
+          current: startVal,
+          start, end, description,
+          status: 'On Track',
+          paused: false
+        };
+        goals.push(newGoal);
+        showToast("Goal created successfully", "success");
+      }
+
+      localStorage.setItem('etho_goals', JSON.stringify(goals));
+      closeGoalFormModal();
+      renderGoals();
+    }
+
+    function openGoalModal(id) {
+      const g = goals.find(item => item.id === id);
+      if (!g) return;
+      currentGoalModalId = g.id;
+
+      document.getElementById('goal-modal-name').textContent = g.name;
+      document.getElementById('goal-modal-type').textContent = formatGoalType(g.type);
+      
+      const pct = Math.min(100, Math.max(0, Math.round((g.current / g.target) * 100)));
+      const daysLeft = Math.max(0, Math.ceil((new Date(g.end) - new Date()) / (1000 * 60 * 60 * 24)));
+
+      const content = document.getElementById('goal-modal-content');
+      content.innerHTML = `
+        <div class="p-3 bg-darkbg rounded-xl border border-bordercol space-y-1">
+          <span class="text-[10px] text-gray-400">Description</span>
+          <p class="text-xs text-gray-200">${g.description || 'No description provided.'}</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="p-3 bg-darkbg rounded-xl border border-bordercol"><span class="text-[10px] text-gray-400">Current Value</span><p class="font-bold text-sm text-blue-400">${g.current}</p></div>
+          <div class="p-3 bg-darkbg rounded-xl border border-bordercol"><span class="text-[10px] text-gray-400">Target Value</span><p class="font-bold text-sm text-emerald-400">${g.target}</p></div>
+        </div>
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="p-2.5 bg-darkbg rounded-xl border border-bordercol"><span class="text-[9px] text-gray-400">Progress</span><p class="font-bold text-xs text-gray-200">${pct}%</p></div>
+          <div class="p-2.5 bg-darkbg rounded-xl border border-bordercol"><span class="text-[9px] text-gray-400">Remaining Days</span><p class="font-bold text-xs text-gray-200">${daysLeft} days</p></div>
+          <div class="p-2.5 bg-darkbg rounded-xl border border-bordercol"><span class="text-[9px] text-gray-400">Status</span><p class="font-bold text-xs text-emerald-400">${g.status}</p></div>
+        </div>
+        ${g.completedDate ? `<div class="text-xs text-gray-400">Completed on: <strong class="text-emerald-400">${g.completedDate}</strong></div>` : ''}
+      `;
+
+      document.getElementById('goal-modal').classList.remove('hidden');
+    }
+
+    function closeGoalModal() {
+      document.getElementById('goal-modal').classList.add('hidden');
+      currentGoalModalId = null;
+    }
+
+    function deleteGoalFromModal() {
+      if (!currentGoalModalId) return;
+      promptDeleteGoal(currentGoalModalId);
+      closeGoalModal();
+    }
+
+    // --- CALENDAR LOGIC ---
+    function calNavigate(dir) {
+      calMonth += dir;
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      else if (calMonth < 0) { calMonth = 11; calYear--; }
+      renderCalendar();
+    }
+
+    function calToday() {
+      calYear = new Date().getFullYear();
+      calMonth = new Date().getMonth();
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      const titleEl = document.getElementById('cal-month-title');
+      if (!grid || !titleEl) return;
+
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      titleEl.textContent = `${months[calMonth]} ${calYear}`;
+
+      const curr = profile ? (profile.currency || '₹') : '₹';
+      const startBal = profile && profile.startingBalance !== undefined ? profile.startingBalance : 0;
+
+      const monthTrades = trades.filter(t => {
+        if (!t.date) return false;
+        const d = new Date(t.date);
+        return d.getFullYear() === calYear && d.getMonth() === calMonth;
+      });
+
+      let dailyMap = {};
+      monthTrades.forEach(t => {
+        const dateKey = t.date;
+        if (!dateKey) return;
+        if (!dailyMap[dateKey]) dailyMap[dateKey] = { pnl: 0, count: 0, trades: [] };
+        const pnl = sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL);
+        dailyMap[dateKey].pnl += pnl;
+        dailyMap[dateKey].count += 1;
+        dailyMap[dateKey].trades.push(t);
+      });
+
+      let monthlyPnl = Object.values(dailyMap).reduce((s, d) => s + d.pnl, 0);
+      let monthlyReturn = startBal > 0 ? ((monthlyPnl / startBal) * 100).toFixed(2) : '0.00';
+      
+      let allMonthTradeResults = monthTrades.map(t => sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL));
+      let wins = allMonthTradeResults.filter(p => p > 0).length;
+      let winRate = allMonthTradeResults.length > 0 ? ((wins / allMonthTradeResults.length) * 100).toFixed(1) : '0';
+
+      let dayPnls = Object.values(dailyMap).map(d => d.pnl);
+      let winningDays = dayPnls.filter(p => p > 0).length;
+      let losingDays = dayPnls.filter(p => p < 0).length;
+
+      let bestDayVal = dayPnls.length > 0 ? Math.max(...dayPnls) : 0;
+      let worstDayVal = dayPnls.length > 0 ? Math.min(...dayPnls) : 0;
+
+      const setElText = (id, text, cls) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.textContent = text;
+          if (cls) el.className = `text-xs sm:text-base font-bold mt-0.5 ${cls}`;
+        }
+      };
+
+      setElText('cal-sum-pnl', `${monthlyPnl > 0 ? '+' : ''}${curr}${monthlyPnl.toFixed(2)}`, monthlyPnl > 0 ? 'text-emerald-400' : monthlyPnl < 0 ? 'text-rose-400' : 'text-gray-200');
+      setElText('cal-sum-return', `${monthlyReturn}%`, 'text-blue-400');
+      setElText('cal-sum-winrate', `${winRate}% (${allMonthTradeResults.length} Trades)`, 'text-gray-200');
+      setElText('cal-sum-days', `${winningDays}W / ${losingDays}L`, 'text-gray-200');
+      setElText('cal-sum-bestworst', `${curr}${bestDayVal.toFixed(0)} / ${curr}${worstDayVal.toFixed(0)}`, 'text-purple-400');
+
+      grid.innerHTML = '';
+      const firstDayIndex = new Date(calYear, calMonth, 1).getDay();
+      const totalDays = new Date(calYear, calMonth + 1, 0).getDate();
+
+      for (let i = 0; i < firstDayIndex; i++) {
+        grid.innerHTML += `<div class="p-1 sm:p-2 rounded-xl bg-white/[0.01] border border-bordercol/30 opacity-30 h-20 sm:h-24"></div>`;
+      }
+
+      for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayData = dailyMap[dateStr] || { pnl: 0, count: 0, trades: [] };
+        
+        let statusClass = 'break-even-day';
+        let textCol = 'text-gray-400';
+        
+        if (dayData.pnl > 0) {
+          statusClass = 'profit-day';
+          textCol = 'text-emerald-400';
+        } else if (dayData.pnl < 0) {
+          statusClass = 'loss-day';
+          textCol = 'text-rose-400';
+        } else if (dayData.count > 0) {
+          statusClass = 'break-even-day';
+          textCol = 'text-gray-300';
+        }
+
+        const formattedPnl = `${dayData.pnl > 0 ? '+' : ''}${curr}${dayData.pnl.toFixed(0)}`;
+
+        grid.innerHTML += `
+          <div onclick="openDayModal('${dateStr}')" class="p-1.5 sm:p-2 rounded-xl border ${statusClass} flex flex-col justify-between h-20 sm:h-24 cursor-pointer transition-all">
+            <div class="flex justify-between items-center text-[10px] sm:text-xs">
+              <span class="font-bold text-gray-300">${day}</span>
+              ${dayData.count > 0 ? `<span class="text-[9px] sm:text-[10px] bg-white/10 px-1 py-0.5 rounded-full">${dayData.count}T</span>` : ''}
+            </div>
+            ${dayData.count > 0 ? `
+              <div>
+                <p class="text-[10px] sm:text-xs font-bold ${textCol} truncate">${formattedPnl}</p>
+              </div>
+            ` : '<span class="text-[9px] text-gray-600">-</span>'}
+          </div>
+        `;
+      }
+    }
+
+    function openDayModal(dateStr) {
+      const dayTrades = trades.filter(t => t.date === dateStr);
+      if (dayTrades.length === 0) return;
+
+      const modal = document.getElementById('day-modal');
+      const titleEl = document.getElementById('day-modal-title');
+      const subEl = document.getElementById('day-modal-subtitle');
+      const metricsEl = document.getElementById('day-modal-metrics');
+      const tradesEl = document.getElementById('day-modal-trades');
+
+      titleEl.textContent = dateStr;
+      subEl.textContent = `${dayTrades.length} total trade(s)`;
+
+      const totalPnl = dayTrades.reduce((s, t) => s + sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL), 0);
+      const wins = dayTrades.filter(t => sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL) > 0).length;
+      const losses = dayTrades.filter(t => sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL) < 0).length;
+      const winRate = ((wins / dayTrades.length) * 100).toFixed(0);
+      
+      const tradePnls = dayTrades.map(t => sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL));
+      const best = Math.max(...tradePnls);
+      const worst = Math.min(...tradePnls);
+      const curr = profile ? (profile.currency || '₹') : '₹';
+
+      metricsEl.innerHTML = `
+        <div class="p-3 bg-darkbg rounded-xl border border-bordercol"><span class="text-[10px] text-gray-400">Total P&L</span><p class="font-bold text-xs sm:text-sm ${totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${totalPnl >= 0 ? '+' : ''}${curr}${totalPnl.toFixed(2)}</p></div>
+        <div class="p-3 bg-darkbg rounded-xl border border-bordercol"><span class="text-[10px] text-gray-400">Win Rate</span><p class="font-bold text-xs sm:text-sm text-blue-400">${winRate}%</p></div>
+        <div class="p-3 bg-darkbg rounded-xl border border-bordercol"><span class="text-[10px] text-gray-400">Best Trade</span><p class="font-bold text-xs sm:text-sm text-emerald-400">${best >= 0 ? '+' : ''}${curr}${best.toFixed(2)}</p></div>
+        <div class="p-3 bg-darkbg rounded-xl border border-bordercol"><span class="text-[10px] text-gray-400">Worst Trade</span><p class="font-bold text-xs sm:text-sm text-rose-400">${worst >= 0 ? '+' : ''}${curr}${worst.toFixed(2)}</p></div>
+      `;
+
+      tradesEl.innerHTML = dayTrades.map(t => {
+        const pnl = sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL);
+        return `
+          <div class="p-3 bg-darkbg rounded-xl border border-bordercol flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2 sm:gap-3">
+              <span class="px-2 py-0.5 rounded font-bold ${t.type === 'Long' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${t.type}</span>
+              <div><span class="font-bold">${t.symbol}</span> <span class="text-gray-400">(${t.entry} → ${t.exit})</span></div>
+            </div>
+            <div class="text-right">
+              <p class="font-bold ${pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${pnl >= 0 ? '+' : ''}${curr}${pnl.toFixed(2)}</p>
+              <span class="text-[10px] text-gray-400">${t.result}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeDayModal() {
+      document.getElementById('day-modal').classList.add('hidden');
+    }
+
+    // --- DASHBOARD RENDERING ---
+    function renderDashboard() {
+      let filtered = [...trades];
+      const now = new Date();
+
+      if (currentDashboardRange === 'month') {
+        filtered = filtered.filter(t => {
+          if (!t.date) return false;
+          const d = new Date(t.date);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+      }
+
+      const startBal = profile && profile.startingBalance !== undefined ? profile.startingBalance : 0;
+      const curr = profile ? (profile.currency || '₹') : '₹';
+      
+      const totalTrades = filtered.length;
+      const winningTradesArr = filtered.filter(t => sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL) > 0);
+      const losingTradesArr = filtered.filter(t => sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL) < 0);
+      
+      const winRate = totalTrades > 0 ? ((winningTradesArr.length / totalTrades) * 100).toFixed(1) + '%' : '0.0%';
+      const totalProfit = winningTradesArr.reduce((s, t) => s + sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL), 0);
+      const totalLoss = losingTradesArr.reduce((s, t) => s + sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL), 0);
+      const netPnl = totalProfit + totalLoss;
+      const currentBal = startBal + netPnl;
+
+      const grossLoss = Math.abs(totalLoss);
+      const profitFactor = grossLoss > 0 ? (totalProfit / grossLoss).toFixed(2) : totalProfit > 0 ? 'Infinite' : '0.00';
+      const avgWin = winningTradesArr.length > 0 ? totalProfit / winningTradesArr.length : 0;
+      const avgLoss = losingTradesArr.length > 0 ? grossLoss / losingTradesArr.length : 0;
+
+      let peak = startBal;
+      let maxDD = 0;
+      let cumBal = startBal;
+      const sortedFiltered = [...filtered].sort((a, b) => new Date(a.date) - new Date(b.date));
+      sortedFiltered.forEach(t => {
+        cumBal += sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL);
+        if (cumBal > peak) peak = cumBal;
+        const dd = peak - cumBal;
+        if (dd > maxDD) maxDD = dd;
+      });
+
+      const grid = document.getElementById('dash-cards-grid');
+      if (grid) {
+        let html = '';
+        if (dashConfig.totalTrades) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Total Trades</p><h4 class="text-xl sm:text-2xl font-bold text-gray-200">${totalTrades}</h4></div>`;
+        if (dashConfig.winningTrades) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Winning Trades</p><h4 class="text-xl sm:text-2xl font-bold text-emerald-400">${winningTradesArr.length}</h4></div>`;
+        if (dashConfig.losingTrades) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Losing Trades</p><h4 class="text-xl sm:text-2xl font-bold text-rose-400">${losingTradesArr.length}</h4></div>`;
+        if (dashConfig.winRate) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Win Rate</p><h4 class="text-xl sm:text-2xl font-bold text-blue-400">${winRate}</h4></div>`;
+        if (dashConfig.totalProfit) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Total Profit</p><h4 class="text-xl sm:text-2xl font-bold text-emerald-400">+${curr}${totalProfit.toFixed(2)}</h4></div>`;
+        if (dashConfig.totalLoss) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Total Loss</p><h4 class="text-xl sm:text-2xl font-bold text-rose-400">${totalLoss < 0 ? '-' : ''}${curr}${grossLoss.toFixed(2)}</h4></div>`;
+        if (dashConfig.netPnl) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Net P&L</p><h4 class="text-xl sm:text-2xl font-bold ${netPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${netPnl >= 0 ? '+' : ''}${curr}${netPnl.toFixed(2)}</h4></div>`;
+        if (dashConfig.currentBalance) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Current Balance</p><h4 class="text-xl sm:text-2xl font-bold text-emerald-400">${curr}${currentBal.toFixed(2)}</h4></div>`;
+        if (dashConfig.startingBalance) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Starting Balance</p><h4 class="text-xl sm:text-2xl font-bold text-gray-300">${curr}${startBal.toFixed(2)}</h4></div>`;
+        if (dashConfig.profitFactor) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Profit Factor</p><h4 class="text-xl sm:text-2xl font-bold text-purple-400">${profitFactor}</h4></div>`;
+        if (dashConfig.avgWin) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Average Win</p><h4 class="text-xl sm:text-2xl font-bold text-emerald-400">${curr}${avgWin.toFixed(2)}</h4></div>`;
+        if (dashConfig.avgLoss) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Average Loss</p><h4 class="text-xl sm:text-2xl font-bold text-rose-400">-${curr}${avgLoss.toFixed(2)}</h4></div>`;
+        if (dashConfig.maxDrawdown) html += `<div class="card-glass p-4 sm:p-5 rounded-2xl border border-bordercol"><p class="text-xs font-medium text-gray-400 mb-1">Maximum Drawdown</p><h4 class="text-xl sm:text-2xl font-bold text-rose-400">-${curr}${maxDD.toFixed(2)}</h4></div>`;
+        
+        grid.innerHTML = html;
+      }
+
+      document.getElementById('header-balance').textContent = `${curr}${currentBal.toFixed(2)}`;
+      document.getElementById('sidebar-balance').textContent = `${curr}${currentBal.toFixed(2)}`;
+
+      if (typeof Chart === 'undefined') return;
+      if (activeCharts['equity']) activeCharts['equity'].destroy();
+
+      let cum = startBal;
+      const eqData = sortedFiltered.map(t => { cum += sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL); return cum; });
+      const eqLabels = sortedFiltered.map(t => t.date);
+
+      const eqCanvas = document.getElementById('equityChart');
+      if (eqCanvas) {
+        activeCharts['equity'] = new Chart(eqCanvas.getContext('2d'), {
+          type: 'line',
+          data: { labels: eqLabels.length ? eqLabels : ['Start'], datasets: [{ data: eqData.length ? eqData : [startBal], borderColor: '#3b82f6', tension: 0.3 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+      }
+    }
+
+    function renderAnalytics() {
+      const el = document.getElementById('an-total');
+      if (el) el.textContent = trades.length;
+    }
+
+    function openClearModal() {
+      showGenericConfirm(
+        "Clear All Data",
+        "Are you sure you want to delete all trades and reset settings? This action cannot be undone.",
+        null,
+        "Yes, Delete",
+        () => {
+          localStorage.clear();
+          trades = [];
+          profile = null;
+          goals = [];
+          showToast("All data cleared successfully", "error");
+          checkFirstTimeSetup();
+          renderDashboard();
+        }
+      );
+    }
+
+    function closeClearModal() {
+      closeGenericConfirm();
+    }
+
+    function exportJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ profile, trades, goals }, null, 2));
+      const dl = document.createElement('a');
+      dl.setAttribute("href", dataStr);
+      dl.setAttribute("download", "etho_journal_backup.json");
+      document.body.appendChild(dl);
+      dl.click();
+      dl.remove();
+      showToast("Data exported successfully", "success");
+    }
+
+    function exportCSV() {
+      if (trades.length === 0) { showToast("No trades to export", "warning"); return; }
+      const headers = ["Date", "Symbol", "Type", "Entry", "Exit", "Net P&L", "Result"];
+      const rows = trades.map(t => [t.date, t.symbol, t.type, t.entry, t.exit, sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL), t.result]);
+      let csv = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "etho_trades.csv"; a.click();
+      showToast("Data exported successfully", "success");
+    }
+
+    function importJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const parsed = JSON.parse(evt.target.result);
+          if (parsed.trades) {
+            trades = parsed.trades.map(t => ({
+              ...t,
+              netPnl: sanitizeNumber(t.netPnl !== undefined ? t.netPnl : t.netPnL)
+            }));
+            localStorage.setItem('etho_trades', JSON.stringify(trades));
+          }
+          if (parsed.profile) {
+            profile = parsed.profile;
+            localStorage.setItem('etho_profile', JSON.stringify(profile));
+            applyProfileToUI();
+          }
+          if (parsed.goals) {
+            goals = parsed.goals;
+            localStorage.setItem('etho_goals', JSON.stringify(goals));
+          }
+          showToast("Backup completed", "success");
+          renderDashboard();
+        } catch (err) {
+          showToast("Invalid backup file", "error");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    window.onload = () => {
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      const d = document.getElementById('trade-date');
+      if (d) d.valueAsDate = new Date();
+      
+      const toggles = document.querySelectorAll('#dash-toggles input[type="checkbox"]');
+      toggles.forEach(cb => {
+        if (dashConfig[cb.dataset.stat] !== undefined) {
+          cb.checked = dashConfig[cb.dataset.stat];
+        }
+      });
+
+      checkFirstTimeSetup();
+      renderDashboard();
+    };
+  </script>
+</body>
+</html>
